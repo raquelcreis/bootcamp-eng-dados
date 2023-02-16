@@ -15,6 +15,6 @@ services:
   bi:
     image: metabase/metabase
     ports:
-      - "3000"
+      - "63811:3000"
     links:
       - db

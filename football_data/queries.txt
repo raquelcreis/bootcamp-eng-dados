@@ -1,0 +1,134 @@
+-- Maiores Marcadores de Todos os Tempos em Competições Internacionais
+
+create view top_scorers as (
+select scorer,team,count(*) as total_goals 
+from goalscorers g 
+where scorer != 'NA' 
+group by scorer,team 
+order BY total_goals desc
+);
+
+-- Maiores Marcadores por Décadas em Competições Internacionais
+
+create view top_scorers_decades as (
+with decades as (
+select scorer,team,
+case 
+	when extract(year from date) < 1920 then '1910s'
+	when extract(year from date) between 1920 and 1929 then '1920s'
+	when extract(year from date) between 1930 and 1939 then '1930s'
+	when extract(year from date) between 1940 and 1949 then '1940s'
+	when extract(year from date) between 1950 and 1959 then '1950s'
+	when extract(year from date) between 1960 and 1969 then '1960s'
+	when extract(year from date) between 1970 and 1979 then '1970s'
+	when extract(year from date) between 1980 and 1989 then '1980s'
+	when extract(year from date) between 1990 and 1999 then '1990s'
+	when extract(year from date) between 2000 and 2009 then '2000s'
+	when extract(year from date) between 2010 and 2019 then '2010s'
+	when extract(year from date) > 2019 then '2020s'
+end as decade
+from goalscorers g 
+where scorer != 'NA'
+),
+goals_decade as(
+select scorer,decade,count(*) as total_goals
+from decades 
+group by scorer,team,decade
+order by total_goals desc
+)
+
+select * from 
+	(
+		select *,
+		rank() over(partition by decade order by total_goals desc) as decade_rank
+		from goals_decade
+		order by decade_rank,decade desc
+	) g
+	where decade_rank <= 1
+);
+	
+-- Maiores Marcadores de Penaltis em Competições Internacionais
+
+create view top_scorers_penaltis as (
+select scorer,count(*) as total_goals 
+from goalscorers g 
+where scorer != 'NA' and penalty is True
+group by scorer 
+order BY total_goals desc 
+);
+
+-- Maiores Marcadores de Penaltis por Décadas em Competições Internacionais
+
+create view top_scorers_penaltis_decades as (
+with decades as (
+select scorer,
+case 
+	when extract(year from date) < 1920 then '1910s'
+	when extract(year from date) between 1920 and 1929 then '1920s'
+	when extract(year from date) between 1930 and 1939 then '1930s'
+	when extract(year from date) between 1940 and 1949 then '1940s'
+	when extract(year from date) between 1950 and 1959 then '1950s'
+	when extract(year from date) between 1960 and 1969 then '1960s'
+	when extract(year from date) between 1970 and 1979 then '1970s'
+	when extract(year from date) between 1980 and 1989 then '1980s'
+	when extract(year from date) between 1990 and 1999 then '1990s'
+	when extract(year from date) between 2000 and 2009 then '2000s'
+	when extract(year from date) between 2010 and 2019 then '2010s'
+	when extract(year from date) > 2019 then '2020s'
+end as decade
+from goalscorers g 
+where scorer != 'NA' and penalty is True
+),
+goals_decade as(
+select scorer,decade,count(*) as total_goals
+from decades 
+group by scorer,decade
+order by total_goals desc
+)
+
+select * from 
+	(
+		select *,
+		rank() over(partition by decade order by total_goals desc) as decade_rank
+		from goals_decade
+		order by decade_rank,decade desc
+	) g
+	where decade_rank <= 1
+);
+
+-- Hat-Tricks
+
+create view hat_tricks as (
+with hat_tricks as(
+select date,home_team,away_team,scorer,count(*) as total_goals 
+from goalscorers g 
+where scorer != 'NA' 
+group by date,home_team,away_team,scorer
+having count(*) > 2
+order BY total_goals desc
+)
+select scorer,count(*)
+from hat_tricks
+group by scorer
+order by 2 desc
+)
+
+-- Jogadores que marcam gols em mais minutos diferentes
+
+create view scorers_diff_minutes as (
+select scorer,count(distinct minute) as count_diff_minutes 
+from goalscorers g 
+where scorer != 'NA' 
+group by scorer 
+order by count_diff_minutes desc
+)
+
+-- Minuto em que ocorrem maior parte dos gols
+
+create view top_minutes as (
+select minute,count(*) 
+from goalscorers g 
+where minute is not null 
+group by minute 
+order by 2 desc
+)
