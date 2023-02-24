@@ -8,6 +8,8 @@ from typing import List
 import os
 from schedule import repeat, every, run_pending
 import time
+import ratelimit
+from backoff import on_exception, expo
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -23,6 +25,9 @@ class MercadoBitcoinApi(ABC):
     def _get_endpoint(self,**kwargs) -> str:
         pass
     
+    @on_exception(expo,ratelimit.exception.RateLimitException,max_tries=10)
+    @ratelimit.limits(calls=29,period=30)
+    @on_exception(expo,requests.exceptions.HTTPError,max_tries=60)
     def get_data(self,**kwargs) -> dict:
         endpoint = self._get_endpoint(**kwargs)
         logger.info(f"Getting data from endpoint: {endpoint}")
@@ -132,7 +137,7 @@ class DaySummaryIngestor(DataIngestor):
             self._update_checkpoint(date + datetime.timedelta(days=1))
 
 #%%
-ingestor = DaySummaryIngestor(writer=DataWriter,coins=["BTC","ETH","LTC"],default_start_date=datetime.date(2021,6,1))
+ingestor = DaySummaryIngestor(writer=DataWriter,coins=["BTC","ETH","LTC","BCH"],default_start_date=datetime.date(2021,6,1))
 
 # %%
 @repeat(every(1).seconds)
